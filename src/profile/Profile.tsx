@@ -48,7 +48,7 @@ interface BusinessAddress {
 }
 interface TaxIdentifier {
   pan: string;
-  etl: string;
+  ein: string;
 }
 const CustomPaper = styled(Paper)(({}) => ({}));
 
@@ -65,7 +65,7 @@ var registerData: { [key: string]: string } = {
   "business.state": "",
   "business.zip": "",
   "tax.pan": "",
-  "tax.etl": "",
+  "tax.ein": "",
 };
 
 export default function Profile() {
@@ -74,6 +74,7 @@ export default function Profile() {
   const [registerUser, setUserData] = useState<{ [key: string]: string }>(
     registerData
   );
+  const [apiResponse, setApiResponse] = useState<{ [key: string]: string }>({});
   const [submited, setSubmited] = useState(false);
   const [disabled, setDisabled] = useState(false);
 
@@ -225,9 +226,9 @@ export default function Profile() {
     },
     {
       width: { md: 5.7, sm: 12, xs: 12 },
-      fieldName: "tax.etl",
-      lable: " ETL Number",
-      helperText: "Please Enter ETL",
+      fieldName: "tax.ein",
+      lable: " EIN Number",
+      helperText: "Please Enter EIN",
       required: true,
       startAdorment: (
         <InputAdornment position="start">
@@ -237,13 +238,14 @@ export default function Profile() {
     },
   ];
 
-  const [signUp, setStatus] = useState({
+  const [responseStatus, setStatus] = useState({
+    open: false,
     error: false,
     message: "",
   });
 
   const resetError = () => {
-    setStatus({ error: false, message: "" });
+    setStatus({ error: false, message: "", open: false });
   };
 
   const validateInput = (data: { [key: string]: string }) => {
@@ -291,22 +293,28 @@ export default function Profile() {
       },
       taxIdentifier: {
         pan: registerUser["tax.pan"],
-        etl: registerUser["tax.etl"],
+        ein: registerUser["tax.ein"],
       },
     };
     console.log("calling.............");
     businessProfileService
-      .post("/v1/customer", payload)
-      .then((response: any) => {
-        console.log(response);
-        let userData = response.data;
-        setUserData(registerData);
+      .post("/v1/customers", payload)
+      .then((responseData: any) => {
+        console.log(responseData);
+        let responseBody = responseData.data;
+        setApiResponse(responseBody);
         setValid(undefined);
+        setDisabled(false);
+        setStatus({ error: false, message: responseBody.message, open: true });
       })
       .catch((error: any) => {
         setDisabled(false);
         console.log(error);
-        setStatus({ error: true, message: error.response?.data });
+        setStatus({
+          error: true,
+          message: error.response?.data?.errorMessage,
+          open: true,
+        });
       });
   };
   return (
@@ -353,13 +361,13 @@ export default function Profile() {
           </Grid>
           <Grid item xl>
             <CustomSnackBar
-              message={`Failed to Register, ${signUp.message}`}
+              message={`Status: ${responseStatus.message}`}
               handleClose={resetError}
-              open={signUp.error}
+              open={responseStatus.open}
               vertical={"top"}
               horizontal={"center"}
               type={"alert"}
-              severity={"error"}
+              severity={responseStatus.error ? "error" : "success"}
               autoHideDuration={6000}
               style={{ top: 100 }}
             ></CustomSnackBar>
